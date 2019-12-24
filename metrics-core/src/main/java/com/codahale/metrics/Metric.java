@@ -5,4 +5,12 @@ package com.codahale.metrics;
  */
 public interface Metric {
 
+    /**
+     * Returns the description of the {@link Metric}.
+     *
+     * @return The description of the {@link Metric}.
+     */
+    default String getDescription() {
+        return null;
+    }
 }

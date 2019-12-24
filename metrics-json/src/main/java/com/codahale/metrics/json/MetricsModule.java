@@ -4,6 +4,7 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Snapshot;
@@ -22,6 +23,18 @@ import java.util.concurrent.TimeUnit;
 
 public class MetricsModule extends Module {
     static final Version VERSION = new Version(4, 0, 0, "", "io.dropwizard.metrics", "metrics-json");
+
+    private static void serializeMetricDescription(Metric metric, JsonGenerator json) throws IOException {
+        final String description;
+        try{
+            description = metric.getDescription();
+            if(description!=null){
+                json.writeStringField("description", description);
+            }
+        } catch (RuntimeException e) {
+            json.writeObjectField("error", e.toString());
+        }
+    }
 
     @SuppressWarnings("rawtypes")
     private static class GaugeSerializer extends StdSerializer<Gauge> {
@@ -44,6 +57,7 @@ public class MetricsModule extends Module {
             } catch (RuntimeException e) {
                 json.writeObjectField("error", e.toString());
             }
+            serializeMetricDescription(gauge,json);
             json.writeEndObject();
         }
     }
@@ -62,6 +76,7 @@ public class MetricsModule extends Module {
                               SerializerProvider provider) throws IOException {
             json.writeStartObject();
             json.writeNumberField("count", counter.getCount());
+            serializeMetricDescription(counter,json);
             json.writeEndObject();
         }
     }
@@ -93,12 +108,11 @@ public class MetricsModule extends Module {
             json.writeNumberField("p98", snapshot.get98thPercentile());
             json.writeNumberField("p99", snapshot.get99thPercentile());
             json.writeNumberField("p999", snapshot.get999thPercentile());
-
             if (showSamples) {
                 json.writeObjectField("values", snapshot.getValues());
             }
-
             json.writeNumberField("stddev", snapshot.getStdDev());
+            serializeMetricDescription(histogram, json);
             json.writeEndObject();
         }
     }
@@ -127,6 +141,7 @@ public class MetricsModule extends Module {
             json.writeNumberField("m5_rate", meter.getFiveMinuteRate() * rateFactor);
             json.writeNumberField("mean_rate", meter.getMeanRate() * rateFactor);
             json.writeStringField("units", rateUnit);
+            serializeMetricDescription(meter,json);
             json.writeEndObject();
         }
     }
@@ -186,6 +201,7 @@ public class MetricsModule extends Module {
             json.writeNumberField("mean_rate", timer.getMeanRate() * rateFactor);
             json.writeStringField("duration_units", durationUnit);
             json.writeStringField("rate_units", rateUnit);
+            serializeMetricDescription(timer, json);
             json.writeEndObject();
         }
     }
@@ -212,6 +228,7 @@ public class MetricsModule extends Module {
             json.writeObjectField("histograms", registry.getHistograms(filter));
             json.writeObjectField("meters", registry.getMeters(filter));
             json.writeObjectField("timers", registry.getTimers(filter));
+            serializeMetricDescription(registry, json);
             json.writeEndObject();
         }
     }
